@@ -21,11 +21,11 @@ apt-get install -y postfix postfix-pcre dovecot-imapd dovecot-sieve opendkim ope
 domain="$(cat /etc/mailname)"
 subdom=${MAIL_SUBDOM:-mail}
 maildomain="$subdom.$domain"
-mkdir /etc/ssl/certs/$maildomain
+#mkdir /etc/ssl/certs/$maildomain
 
 #openssl key gen
 
-certdir="/etc/ssl/certs/$maildomain"
+#certdir="/etc/ssl/certs/$maildomain"
 
 # Open required mail ports, and 80, for Certbot.
 # for port in 80 993 465 25 587; do
@@ -66,9 +66,9 @@ postconf -e 'mydestination = $myhostname, $mydomain, mail, localhost.localdomain
 #di sini dia menggunakan cert falid dari certbot
 
 # Change the cert/key files to the default locations of the Let's Encrypt cert/key
-postconf -e "smtpd_tls_key_file=$certdir/privkey.pem"
-postconf -e "smtpd_tls_cert_file=$certdir/fullchain.pem"
-postconf -e "smtp_tls_CAfile=$certdir/cert.pem"
+#postconf -e "smtpd_tls_key_file=$certdir/privkey.pem"
+#postconf -e "smtpd_tls_cert_file=$certdir/fullchain.pem"
+#postconf -e "smtp_tls_CAfile=$certdir/cert.pem"
 
 # Enable, but do not require TLS. Requiring it with other server would cause
 # mail delivery problems and requiring it locally would cause many other
