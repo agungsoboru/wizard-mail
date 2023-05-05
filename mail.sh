@@ -20,7 +20,7 @@ umask 0022
 apt-get install -y postfix postfix-pcre dovecot-imapd dovecot-sieve opendkim opendkim-tools spamassassin spamc net-tools fail2ban
 domain="$(cat /etc/mailname)"
 subdom=${MAIL_SUBDOM:-mail}
-maildomain="$subdom.$domain"
+maildomain="$domain"
 #mkdir /etc/ssl/certs/$maildomain
 
 #openssl key gen
@@ -161,8 +161,8 @@ echo "# Dovecot config
 # %h the user's home directory
 
 ssl = required
-ssl_cert = <$certdir/fullchain.pem
-ssl_key = <$certdir/privkey.pem
+ssl_cert = /etc/ssl/certs/ssl-cert-snakeoil.pem
+ssl_key = /etc/ssl/private/ssl-cert-snakeoil.key
 ssl_min_protocol = TLSv1.2
 ssl_cipher_list = "'EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA256:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EDH+aRSA+AESGCM:EDH+aRSA+SHA256:EDH+aRSA:EECDH:!aNULL:!eNULL:!MEDIUM:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS:!RC4:!SEED'"
 ssl_prefer_server_ciphers = yes
@@ -268,17 +268,18 @@ account required        pam_unix.so' >> /etc/pam.d/dovecot
 # Create an OpenDKIM key in the proper place with proper permissions.
 echo 'Generating OpenDKIM keys...'
 mkdir -p "/etc/postfix/dkim/$domain"
-opendkim-genkey -D "/etc/postfix/dkim/$domain" -d 4096 "$domain" -s "$subdom"
+opendkim-genkey -D "/etc/postfix/dkim/$domain" -d 4096 "$domain" -s "default"
+#sudo opendkim-genkey -b 2048 -d agungsurya.my.id -D /etc/opendkim/keys/agungsurya.my.id -s default -v 
 chgrp -R opendkim /etc/postfix/dkim/*
 chmod -R g+r /etc/postfix/dkim/*
 
 # Generate the OpenDKIM info:
 echo 'Configuring OpenDKIM...'
 grep -q "$domain" /etc/postfix/dkim/keytable 2>/dev/null ||
-echo "$subdom._domainkey.$domain $domain:$subdom:/etc/postfix/dkim/$domain/$subdom.private" >> /etc/postfix/dkim/keytable
+echo "domainkey.$domain $domain:default:/etc/postfix/dkim/$domain/default.private" >> /etc/postfix/dkim/keytable
 
 grep -q "$domain" /etc/postfix/dkim/signingtable 2>/dev/null ||
-echo "*@$domain $subdom._domainkey.$domain" >> /etc/postfix/dkim/signingtable
+echo "*@$domain default._domainkey.$domain" >> /etc/postfix/dkim/signingtable
 
 grep -q '127.0.0.1' /etc/postfix/dkim/trustedhosts 2>/dev/null ||
 	echo '127.0.0.1
@@ -332,8 +333,8 @@ for x in spamassassin opendkim dovecot postfix fail2ban; do
 	systemctl enable "$x"
 done
 
-pval="$(tr -d '\n' <"/etc/postfix/dkim/$domain/$subdom.txt" | sed "s/k=rsa.* \"p=/k=rsa; p=/;s/\"\s*\"//;s/\"\s*).*//" | grep -o 'p=.*')"
-dkimentry="$subdom._domainkey.$domain	TXT	v=DKIM1; k=rsa; $pval"
+pval="$(tr -d '\n' <"/etc/postfix/dkim/$domain/default.txt" | sed "s/k=rsa.* \"p=/k=rsa; p=/;s/\"\s*\"//;s/\"\s*).*//" | grep -o 'p=.*')"
+dkimentry="_domainkey.$domain	TXT	v=DKIM1; k=rsa; $pval"
 dmarcentry="_dmarc.$domain	TXT	v=DMARC1; p=reject; rua=mailto:dmarc@$domain; fo=1"
 spfentry="$domain	TXT	v=spf1 mx a:$maildomain -all"
 mxentry="$domain	MX	10	$maildomain	300"
